@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Porziony Gestionale – Prenotazioni, ricettario, magazzino e spesa</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FAF9F7;--bg2:#F5F1EA;--acc:#FF8A3D;--ink:#1F2937;--mute:#6B7280;--card:#fff;--line:rgba(31,41,55,.1);--ok:#8FAE8A;--blue:#5D7FA3;--bad:#C2410C;--sh:0 1px 2px rgba(31,41,55,.05),0 10px 28px -12px rgba(31,41,55,.14);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1A1815;--bg2:#221F1B;--ink:#F3EFE8;--mute:#A8A196;--card:#2A2621;--line:rgba(255,255,255,.12);--bad:#FDBA74}}
+:root[data-theme="dark"]{--bg:#1A1815;--bg2:#221F1B;--ink:#F3EFE8;--mute:#A8A196;--card:#2A2621;--line:rgba(255,255,255,.12);--bad:#FDBA74}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "DM Sans",system-ui,sans-serif}
+h1,h2{font-family:Fraunces,Georgia,serif;font-weight:400;letter-spacing:-.02em;margin:0}h2{font-size:1.5rem;margin-bottom:14px}
+.wrap{max-width:1100px;margin:0 auto;padding:20px}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px}h1{font-size:1.8rem}
+nav{display:flex;gap:6px;background:var(--bg2);padding:5px;border-radius:999px;overflow-x:auto}
+nav button{border:0;background:none;color:var(--mute);padding:9px 18px;border-radius:999px;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+nav button.on{background:var(--card);color:var(--ink);box-shadow:var(--sh)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--sh);padding:20px;margin-bottom:18px}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:18px}
+@media(max-width:860px){.week{grid-template-columns:1fr 1fr}}@media(max-width:480px){.week{grid-template-columns:1fr}}
+.day{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;min-height:130px;font-size:.88rem}
+.day.today{border-color:var(--acc)}.day h3{margin:0 0 8px;font-size:.85rem;color:var(--mute);display:flex;justify-content:space-between}
+.bk{background:var(--bg2);border-radius:10px;padding:7px 9px;margin-bottom:6px;display:flex;justify-content:space-between;gap:6px}
+.bk small{color:var(--mute);display:block}
+input,select,button.b,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:9px 12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.row label{display:grid;gap:4px;font-size:.82rem;color:var(--mute)}
+button.b{cursor:pointer;font-weight:600}button.p{background:var(--acc);border-color:var(--acc);color:#2B1300}
+button.x{border:0;background:none;color:var(--mute);cursor:pointer;font-size:1rem}
+table{width:100%;border-collapse:collapse;font-size:.95rem}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line)}th{font-size:.8rem;color:var(--mute);font-weight:500}
+td input[type=number]{width:90px}.buy{font-weight:600;color:var(--bad)}.okc{color:#5B7D57}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}@media(max-width:700px){.steps{grid-template-columns:1fr 1fr}}
+.st{padding:12px 14px;border-radius:14px;background:var(--bg2);font-size:.88rem}.st b{display:block}.st.done{background:color-mix(in srgb,var(--ok) 30%,var(--card))}.st.warn{background:color-mix(in srgb,var(--acc) 22%,var(--card))}
+.muted{color:var(--mute);font-size:.9rem}.rec{border-top:1px solid var(--line);padding:12px 0}.rec:first-of-type{border:0}
+.scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><h1>Porziony <span class="muted">Gestionale</span></h1>
+<nav id="tabs" aria-label="Sezioni"></nav></header>
+<main id="view"></main>
+</div>
+<script>
+var K='porziony-gestionale-v1',tab='cal',off=0,S=load();
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function monday(o){var d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7)+o*7);return d}
+function weekDays(o){var m=monday(o);return[0,1,2,3,4,5,6].map(function(i){var d=new Date(m);d.setDate(m.getDate()+i);return d})}
+function seed(){var w=weekDays(0).map(ymd);return{min:8,
+recipes:[{id:'r1',name:'Lasagna',base:4,ing:[{n:'Farina',q:500,u:'g'},{n:'Uova',q:2,u:'pz'},{n:'Formaggio',q:300,u:'g'},{n:'Passata',q:400,u:'g'}]},
+{id:'r2',name:'Frittata di zucchine',base:4,ing:[{n:'Zucchine',q:600,u:'g'},{n:'Uova',q:6,u:'pz'},{n:'Parmigiano',q:80,u:'g'}]}],
+stock:[{n:'Farina',q:300,u:'g'},{n:'Uova',q:4,u:'pz'},{n:'Parmigiano',q:100,u:'g'}],
+bookings:[{id:'b1',date:w[1],time:'20:00',name:'Rossi',covers:4,recipe:'r1'},{id:'b2',date:w[1],time:'21:00',name:'Bianchi',covers:2,recipe:'r2'},{id:'b3',date:w[4],time:'20:30',name:'Verdi',covers:6,recipe:'r1'}],
+tasks:[{id:'t1',date:w[0],text:'Controllare prenotazioni e magazzino',done:false}]}}
+function load(){try{var s=localStorage.getItem(K);if(s)return JSON.parse(s)}catch(e){}return seed()}
+function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+function e(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function uid(){return 'i'+Math.random().toString(36).slice(2,9)}
+function rec(id){return S.recipes.filter(function(r){return r.id===id})[0]}
+function r1(x){return Math.round(x*10)/10}
+var IT=['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+
+function calc(wk){var need={},missing=[],perDay={},days={};
+S.bookings.forEach(function(b){if(wk.indexOf(b.date)>-1)(days[b.date]=days[b.date]||[]).push(b)});
+Object.keys(days).forEach(function(d){var l=days[d],tot=l.reduce(function(a,b){return a+ +b.covers},0),extra=Math.max(0,S.min-tot);
+perDay[d]={tot:tot,extra:extra};var fi=-1;l.forEach(function(b,i){if(fi<0&&rec(b.recipe))fi=i});
+l.forEach(function(b,i){var r=rec(b.recipe);if(!r){missing.push(b);return}var c=+b.covers+(i===fi?extra:0);
+r.ing.forEach(function(x){var k=x.n.toLowerCase()+'|'+x.u.toLowerCase(),o=need[k]||(need[k]={n:x.n,u:x.u,q:0,s:0});o.q+=x.q*c/r.base})})});
+S.stock.forEach(function(s){var k=s.n.toLowerCase()+'|'+s.u.toLowerCase();if(need[k])need[k].s+=+s.q});
+var rows=Object.keys(need).map(function(k){var o=need[k];return{n:o.n,u:o.u,need:r1(o.q),stock:r1(o.s),buy:r1(Math.max(0,o.q-o.s))}}).sort(function(a,b){return b.buy-a.buy});
+return{rows:rows,missing:missing,perDay:perDay,count:Object.keys(days).reduce(function(a,d){return a+days[d].length},0)}}
+
+function cal(){var ds=weekDays(off),wk=ds.map(ymd),today=ymd(new Date());
+var h='<div class="card row" style="justify-content:space-between;align-items:center"><div class="row"><button class="b" data-a="wk" data-v="-1" aria-label="Settimana precedente">‹</button><button class="b" data-a="wk" data-v="0">Oggi</button><button class="b" data-a="wk" data-v="1" aria-label="Settimana successiva">›</button></div><b>Settimana dal '+ds[0].toLocaleDateString('it-IT',{day:'numeric',month:'long'})+' al '+ds[6].toLocaleDateString('it-IT',{day:'numeric',month:'long'})+'</b></div><div class="week">';
+ds.forEach(function(d,i){var k=wk[i];h+='<div class="day'+(k===today?' today':'')+'"><h3><span>'+IT[i]+' '+d.getDate()+'</span><button class="x" data-a="pick" data-v="'+k+'" aria-label="Aggiungi prenotazione il '+k+'">＋</button></h3>';
+S.bookings.filter(function(b){return b.date===k}).sort(function(a,b){return a.time<b.time?-1:1}).forEach(function(b){var r=rec(b.recipe);
+h+='<div class="bk"><span><b>'+e(b.time)+' '+e(b.name)+'</b><small>'+b.covers+' pers. · '+(r?e(r.name):'<span style="color:var(--bad)">senza ricetta</span>')+'</small></span><button class="x" data-a="delb" data-v="'+b.id+'" aria-label="Elimina">✕</button></div>'});
+h+='</div>'});
+h+='</div><form class="card" id="fb"><h2>Nuova prenotazione</h2><div class="row"><label>Data<input type="date" name="date" required value="'+(window._pd||wk[0])+'"></label><label>Ora<input type="time" name="time" value="20:00" required></label><label>Nome<input name="name" required placeholder="Cognome"></label><label>Persone<input type="number" name="covers" min="1" value="2" style="width:80px" required></label><label>Ricetta<select name="recipe"><option value="">— scegli —</option>'+S.recipes.map(function(r){return'<option value="'+r.id+'">'+e(r.name)+'</option>'}).join('')+'</select></label><button class="b p">Aggiungi</button></div></form>';
+h+='<div class="card"><h2>Cose da fare questa settimana</h2>';
+S.tasks.filter(function(t){return !t.date||wk.indexOf(t.date)>-1}).forEach(function(t){h+='<div class="row" style="align-items:center;margin-bottom:6px"><label style="display:flex;gap:10px;align-items:center;color:var(--ink);font-size:1rem"><input type="checkbox" data-a="tk" data-v="'+t.id+'"'+(t.done?' checked':'')+'><span'+(t.done?' style="text-decoration:line-through;color:var(--mute)"':'')+'>'+e(t.text)+(t.date?' <small class="muted">('+t.date.slice(5)+')</small>':'')+'</span></label><button class="x" data-a="delt" data-v="'+t.id+'" aria-label="Elimina">✕</button></div>'});
+h+='<form id="ft" class="row" style="margin-top:12px"><label>Attività<input name="text" required style="min-width:240px"></label><label>Giorno<input type="date" name="date"></label><button class="b">Aggiungi</button></form></div>';return h}
+
+function recipes(){var h='<div class="card"><h2>Ricettario interno</h2>';
+if(!S.recipes.length)h+='<p class="muted">Nessuna ricetta. Aggiungine una qui sotto.</p>';
+S.recipes.forEach(function(r){h+='<div class="rec"><div class="row" style="justify-content:space-between"><b>'+e(r.name)+' <span class="muted">· ingredienti per '+r.base+' persone</span></b><span><button class="b" data-a="editr" data-v="'+r.id+'">Modifica</button> <button class="x" data-a="delr" data-v="'+r.id+'" aria-label="Elimina">✕</button></span></div><div class="muted">'+r.ing.map(function(i){return e(i.n)+' '+i.q+' '+e(i.u)}).join(' · ')+'</div></div>'});
+var ed=window._er||{id:'',name:'',base:4,ing:[]};
+h+='</div><form class="card" id="fr"><h2>'+(ed.id?'Modifica ricetta':'Nuova ricetta')+'</h2><div class="row"><label>Nome<input name="name" required value="'+e(ed.name)+'"></label><label>Porzioni di base<input type="number" name="base" min="1" value="'+ed.base+'" style="width:100px" required></label></div><label class="muted" style="display:grid;gap:4px;margin:12px 0">Ingredienti, uno per riga: nome, quantità, unità (es. Farina, 500, g)<textarea name="ing" rows="6" required>'+e(ed.ing.map(function(i){return i.n+', '+i.q+', '+i.u}).join('\n'))+'</textarea></label><button class="b p">Salva ricetta</button></form>';return h}
+
+function stock(){var h='<div class="card"><h2>Magazzino</h2><div class="scroll"><table><tr><th>Ingrediente</th><th>Quantità</th><th>Unità</th><th></th></tr>';
+S.stock.forEach(function(s,i){h+='<tr><td>'+e(s.n)+'</td><td><input type="number" step="any" min="0" value="'+s.q+'" data-a="sq" data-v="'+i+'" aria-label="Quantità '+e(s.n)+'"></td><td>'+e(s.u)+'</td><td><button class="x" data-a="dels" data-v="'+i+'" aria-label="Elimina">✕</button></td></tr>'});
+h+='</table></div></div><form class="card" id="fs"><h2>Aggiungi o aggiorna articolo</h2><div class="row"><label>Ingrediente<input name="n" required></label><label>Quantità<input type="number" step="any" min="0" name="q" required style="width:100px"></label><label>Unità<input name="u" placeholder="g, pz, l" style="width:90px" required></label><button class="b p">Salva</button></div><p class="muted">Se l’articolo esiste già (stessa unità), la quantità viene sostituita.</p></form>';return h}
+
+function shop(){var wk=weekDays(off).map(ymd),c=calc(wk),buy=c.rows.filter(function(r){return r.buy>0});
+var allRec=c.missing.length===0&&c.count>0,
+st=[['1. Prenotazioni',c.count+' in settimana',c.count>0],['2. Ricettario',c.missing.length?c.missing.length+' senza ricetta':'tutte collegate',allRec],['3. Magazzino',S.stock.length+' articoli',S.stock.length>0],['4. Spesa',buy.length+' da comprare',allRec]];
+var h='<div class="row" style="margin-bottom:14px"><button class="b" data-a="wk" data-v="-1">‹</button><button class="b" data-a="wk" data-v="0">Oggi</button><button class="b" data-a="wk" data-v="1">›</button><b style="align-self:center">Settimana dal '+weekDays(off)[0].toLocaleDateString('it-IT',{day:'numeric',month:'long'})+'</b></div><div class="steps">'+st.map(function(s){return'<div class="st '+(s[2]?'done':'warn')+'"><b>'+s[0]+'</b>'+s[1]+'</div>'}).join('')+'</div>';
+if(c.missing.length)h+='<div class="card" style="border-color:var(--acc)"><b>Attenzione:</b> queste prenotazioni non hanno una ricetta e non sono nel calcolo: '+c.missing.map(function(b){return e(b.name)+' ('+b.date.slice(5)+')'}).join(', ')+'.</div>';
+h+='<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Spesa della settimana</h2><label class="muted row" style="align-items:center">Coperti minimi per giorno con prenotazioni<input type="number" min="0" value="'+S.min+'" data-a="min" style="width:80px"></label></div>';
+var pd=Object.keys(c.perDay).sort();if(pd.length)h+='<p class="muted">'+pd.map(function(d){var p=c.perDay[d];return d.slice(5)+': '+p.tot+(p.extra?' +'+p.extra+' per arrivare a '+S.min:'')}).join(' · ')+'</p>';
+if(!c.rows.length)h+='<p class="muted">Nessun ingrediente da calcolare per questa settimana.</p>';else h+='<div class="scroll"><table><tr><th>Ingrediente</th><th>Serve</th><th>In magazzino</th><th>Da comprare</th></tr>'+c.rows.map(function(r){return'<tr><td>'+e(r.n)+'</td><td>'+r.need+' '+e(r.u)+'</td><td>'+r.stock+' '+e(r.u)+'</td><td class="'+(r.buy?'buy':'okc')+'">'+(r.buy?r.buy+' '+e(r.u):'✓ coperto')+'</td></tr>'}).join('')+'</table></div>';
+h+='<div class="row" style="margin-top:16px"><button class="b p" data-a="copy"'+(buy.length?'':' disabled')+'>Copia lista della spesa</button><span id="cp" class="muted" role="status"></span></div><p class="muted">Per ogni giorno con prenotazioni, se i coperti sono meno del minimo, la differenza viene aggiunta alla prima ricetta del giorno. Metti 0 per disattivare. Le unità di ricettario e magazzino devono coincidere.</p></div>';
+window._buy=buy;return h}
+
+function render(){var T=[['cal','Prenotazioni'],['rec','Ricettario'],['stk','Magazzino'],['shop','Spesa']];
+document.getElementById('tabs').innerHTML=T.map(function(t){return'<button data-a="tab" data-v="'+t[0]+'" class="'+(t[0]===tab?'on':'')+'">'+t[1]+'</button>'}).join('');
+document.getElementById('view').innerHTML={cal:cal,rec:recipes,stk:stock,shop:shop}[tab]();save()}
+
+document.addEventListener('click',function(ev){var t=ev.target.closest('[data-a]');if(!t)return;var a=t.dataset.a,v=t.dataset.v;
+if(a==='tab'){tab=v;window._er=null}else if(a==='wk')off=v==='0'?0:off+ +v;else if(a==='pick'){window._pd=v;render();document.getElementById('fb').scrollIntoView({behavior:'smooth'});return}
+else if(a==='delb')S.bookings=S.bookings.filter(function(b){return b.id!==v});else if(a==='delt')S.tasks=S.tasks.filter(function(x){return x.id!==v});
+else if(a==='delr'){if(!confirm('Eliminare la ricetta?'))return;S.recipes=S.recipes.filter(function(r){return r.id!==v})}else if(a==='editr')window._er=rec(v);
+else if(a==='dels')S.stock.splice(+v,1);else if(a==='copy'){var txt='Spesa settimana:\n'+window._buy.map(function(r){return'- '+r.n+': '+r.buy+' '+r.u}).join('\n');
+try{navigator.clipboard.writeText(txt).then(function(){document.getElementById('cp').textContent='Copiata!'},function(){document.getElementById('cp').textContent='Copia non disponibile'})}catch(x){document.getElementById('cp').textContent='Copia non disponibile'}return}
+else return;render()});
+document.addEventListener('change',function(ev){var t=ev.target,a=t.dataset.a;if(a==='tk'){S.tasks.forEach(function(x){if(x.id===t.dataset.v)x.done=t.checked})}else if(a==='sq')S.stock[+t.dataset.v].q=+t.value;else if(a==='min')S.min=Math.max(0,+t.value||0);else return;render()});
+document.addEventListener('submit',function(ev){ev.preventDefault();var f=ev.target,d=new FormData(f),id=f.id;
+if(id==='fb'){S.bookings.push({id:uid(),date:d.get('date'),time:d.get('time'),name:d.get('name'),covers:+d.get('covers'),recipe:d.get('recipe')})}
+else if(id==='ft')S.tasks.push({id:uid(),date:d.get('date'),text:d.get('text'),done:false});
+else if(id==='fr'){var ing=String(d.get('ing')).split('\n').map(function(l){var p=l.split(',').map(function(x){return x.trim()});return{n:p[0],q:parseFloat((p[1]||'').replace(',','.')),u:p[2]||''}}).filter(function(i){return i.n&&i.q>0});
+var er=window._er;if(er){er.name=d.get('name');er.base=+d.get('base');er.ing=ing}else S.recipes.push({id:uid(),name:d.get('name'),base:+d.get('base'),ing:ing});window._er=null}
+else if(id==='fs'){var n=d.get('n').trim(),u=d.get('u').trim(),hit=S.stock.filter(function(s){return s.n.toLowerCase()===n.toLowerCase()&&s.u.toLowerCase()===u.toLowerCase()})[0];if(hit)hit.q=+d.get('q');else S.stock.push({n:n,q:+d.get('q'),u:u})}
+render()});
+render();
+</script>
+</body>
+</html>
